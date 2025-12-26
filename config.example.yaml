@@ -1,0 +1,356 @@
+# AI Business Automation Tree Configuration
+# Copy this file to config.yaml and update with your settings
+
+# System Configuration
+system:
+  name: "AI Business Automation Tree"
+  version: "1.0.0"
+  environment: "production"  # development, staging, production
+  debug: false
+  log_level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+# Trunk Configuration (Central Orchestrator)
+trunk:
+  max_parallel_agents: 10
+  timeout_seconds: 300
+  retry_attempts: 3
+  retry_delay_seconds: 5
+  enable_logging: true
+  log_directory: "./logs"
+
+# Branch Configurations
+branches:
+  
+  # Marketing Branch
+  marketing:
+    enabled: true
+    ai_model: "gpt-4"
+    temperature: 0.7
+    max_tokens: 2000
+    channels:
+      - email
+      - social
+      - blog
+      - sms
+    campaign_budget_limit: 100000
+    ab_test_enabled: true
+    analytics_tracking: true
+  
+  # Sales Branch
+  sales:
+    enabled: true
+    crm_integration: "salesforce"  # salesforce, hubspot, pipedrive
+    lead_score_threshold: 70
+    auto_assign_leads: true
+    follow_up_enabled: true
+    deal_pipeline_stages:
+      - "Prospecting"
+      - "Qualification"
+      - "Proposal"
+      - "Negotiation"
+      - "Closed Won"
+      - "Closed Lost"
+    forecast_accuracy_target: 0.85
+  
+  # Operations Branch
+  operations:
+    enabled: true
+    inventory_optimization: true
+    demand_forecasting: true
+    forecasting_model: "prophet"  # prophet, arima, xgboost
+    supply_chain_visibility: true
+    reorder_point_calculation: true
+    safety_stock_days: 14
+    lead_time_days: 7
+  
+  # Customer Service Branch
+  customer_service:
+    enabled: true
+    ai_resolution_threshold: 0.85
+    max_response_time_hours: 4
+    sentiment_analysis: true
+    auto_escalation: true
+    escalation_keywords:
+      - "urgent"
+      - "emergency"
+      - "lawsuit"
+      - "attorney"
+    priority_levels:
+      high: 1
+      medium: 2
+      low: 3
+    sla_targets:
+      high: 2  # hours
+      medium: 8
+      low: 24
+  
+  # Analytics Branch
+  analytics:
+    enabled: true
+    real_time_dashboards: true
+    predictive_analytics: true
+    anomaly_detection: true
+    reporting_frequency: "daily"  # hourly, daily, weekly, monthly
+    kpi_tracking: true
+    business_intelligence: true
+    data_retention_days: 365
+  
+  # HR Branch
+  hr:
+    enabled: true
+    resume_parsing: true
+    candidate_screening: true
+    screening_pass_threshold: 0.75
+    interview_scheduling: true
+    onboarding_automation: true
+    performance_reviews: true
+    review_frequency_months: 6
+
+# AI Models Configuration
+ai_models:
+  openai:
+    api_key: "${OPENAI_API_KEY}"  # Use environment variable
+    organization: "${OPENAI_ORG_ID}"
+    default_model: "gpt-4"
+    embedding_model: "text-embedding-3-small"
+    max_retries: 3
+    timeout: 60
+  
+  anthropic:
+    api_key: "${ANTHROPIC_API_KEY}"
+    default_model: "claude-3-opus-20240229"
+  
+  local_models:
+    enabled: false
+    model_path: "./models"
+    device: "cuda"  # cuda, cpu, mps
+
+# Database Configuration
+databases:
+  primary:
+    type: "postgresql"
+    host: "${DB_HOST}"
+    port: 5432
+    database: "${DB_NAME}"
+    username: "${DB_USER}"
+    password: "${DB_PASSWORD}"
+    pool_size: 10
+    max_overflow: 20
+    echo: false
+  
+  cache:
+    type: "redis"
+    host: "${REDIS_HOST}"
+    port: 6379
+    db: 0
+    password: "${REDIS_PASSWORD}"
+    decode_responses: true
+    max_connections: 50
+  
+  analytics:
+    type: "mongodb"
+    host: "${MONGO_HOST}"
+    port: 27017
+    database: "analytics"
+    username: "${MONGO_USER}"
+    password: "${MONGO_PASSWORD}"
+
+# External Integrations
+integrations:
+  
+  # CRM Systems
+  salesforce:
+    enabled: false
+    username: "${SALESFORCE_USERNAME}"
+    password: "${SALESFORCE_PASSWORD}"
+    security_token: "${SALESFORCE_TOKEN}"
+    sandbox: false
+  
+  hubspot:
+    enabled: false
+    api_key: "${HUBSPOT_API_KEY}"
+    portal_id: "${HUBSPOT_PORTAL_ID}"
+  
+  # Communication Platforms
+  slack:
+    enabled: false
+    bot_token: "${SLACK_BOT_TOKEN}"
+    app_token: "${SLACK_APP_TOKEN}"
+    signing_secret: "${SLACK_SIGNING_SECRET}"
+  
+  microsoft_teams:
+    enabled: false
+    tenant_id: "${TEAMS_TENANT_ID}"
+    client_id: "${TEAMS_CLIENT_ID}"
+    client_secret: "${TEAMS_CLIENT_SECRET}"
+  
+  # Email Services
+  sendgrid:
+    enabled: false
+    api_key: "${SENDGRID_API_KEY}"
+    from_email: "noreply@yourdomain.com"
+    from_name: "AI Automation"
+  
+  mailchimp:
+    enabled: false
+    api_key: "${MAILCHIMP_API_KEY}"
+    server_prefix: "us1"  # Check your Mailchimp account
+  
+  # SMS Services
+  twilio:
+    enabled: false
+    account_sid: "${TWILIO_ACCOUNT_SID}"
+    auth_token: "${TWILIO_AUTH_TOKEN}"
+    from_number: "${TWILIO_FROM_NUMBER}"
+  
+  # Cloud Providers
+  aws:
+    enabled: false
+    access_key_id: "${AWS_ACCESS_KEY_ID}"
+    secret_access_key: "${AWS_SECRET_ACCESS_KEY}"
+    region: "us-east-1"
+    s3_bucket: "ai-automation-data"
+  
+  azure:
+    enabled: false
+    subscription_id: "${AZURE_SUBSCRIPTION_ID}"
+    tenant_id: "${AZURE_TENANT_ID}"
+    client_id: "${AZURE_CLIENT_ID}"
+    client_secret: "${AZURE_CLIENT_SECRET}"
+  
+  gcp:
+    enabled: false
+    project_id: "${GCP_PROJECT_ID}"
+    credentials_path: "./secrets/gcp-credentials.json"
+
+# Monitoring & Observability
+monitoring:
+  prometheus:
+    enabled: false
+    port: 9090
+    metrics_path: "/metrics"
+  
+  grafana:
+    enabled: false
+    host: "localhost"
+    port: 3000
+    api_key: "${GRAFANA_API_KEY}"
+  
+  datadog:
+    enabled: false
+    api_key: "${DATADOG_API_KEY}"
+    app_key: "${DATADOG_APP_KEY}"
+  
+  sentry:
+    enabled: false
+    dsn: "${SENTRY_DSN}"
+    environment: "production"
+    traces_sample_rate: 0.1
+
+# Security Configuration
+security:
+  jwt:
+    secret_key: "${JWT_SECRET_KEY}"
+    algorithm: "HS256"
+    expiration_hours: 24
+  
+  encryption:
+    enabled: true
+    algorithm: "AES-256-GCM"
+    key: "${ENCRYPTION_KEY}"
+  
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 60
+    burst_size: 10
+  
+  cors:
+    enabled: true
+    allowed_origins:
+      - "http://localhost:3000"
+      - "https://yourdomain.com"
+    allowed_methods:
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "DELETE"
+    allowed_headers:
+      - "Content-Type"
+      - "Authorization"
+
+# API Configuration
+api:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 4
+  reload: false
+  ssl_enabled: false
+  ssl_cert_path: "./certs/cert.pem"
+  ssl_key_path: "./certs/key.pem"
+  api_prefix: "/api/v1"
+  docs_enabled: true
+  docs_url: "/docs"
+
+# Task Queue Configuration
+task_queue:
+  broker: "redis://${REDIS_HOST}:6379/0"
+  backend: "redis://${REDIS_HOST}:6379/1"
+  worker_concurrency: 4
+  task_time_limit: 300
+  task_soft_time_limit: 280
+  result_expires: 3600
+
+# Feature Flags
+features:
+  voice_agents: false
+  multilingual_support: false
+  custom_agent_builder: false
+  advanced_forecasting: true
+  federated_learning: false
+  edge_computing: false
+  ar_vr_dashboards: false
+
+# Performance Tuning
+performance:
+  connection_pool_size: 20
+  max_connections: 100
+  timeout_seconds: 30
+  batch_size: 100
+  cache_ttl_seconds: 3600
+  enable_compression: true
+  compression_level: 6
+
+# Backup & Recovery
+backup:
+  enabled: true
+  frequency: "daily"  # hourly, daily, weekly
+  retention_days: 30
+  destination: "s3://your-backup-bucket/backups"
+  encryption_enabled: true
+
+# Notifications
+notifications:
+  email:
+    enabled: true
+    smtp_host: "${SMTP_HOST}"
+    smtp_port: 587
+    smtp_username: "${SMTP_USERNAME}"
+    smtp_password: "${SMTP_PASSWORD}"
+    from_address: "alerts@yourdomain.com"
+  
+  slack:
+    enabled: false
+    webhook_url: "${SLACK_WEBHOOK_URL}"
+  
+  sms:
+    enabled: false
+    service: "twilio"
+
+# Alerting Rules
+alerts:
+  error_rate_threshold: 0.05  # 5%
+  response_time_threshold_ms: 1000
+  cpu_threshold_percent: 80
+  memory_threshold_percent: 85
+  disk_threshold_percent: 90
+  alert_cooldown_minutes: 15

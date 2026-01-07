@@ -1,6 +1,6 @@
 # Core Dependencies
 asyncio-mqtt==0.16.2
-aiohttp==3.9.1
+aiohttp==3.13.3
 python-dotenv==1.0.0
 
 # AI/ML Libraries

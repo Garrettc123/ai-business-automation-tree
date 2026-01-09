@@ -196,8 +196,8 @@ async def main():
     # Initialize system
     await initialize_system()
     
-    # Get port from environment or use default
-    port = int(os.getenv('API_PORT', 8000))
+    # Get port from environment (PORT for Vercel, API_PORT for Docker)
+    port = int(os.getenv('PORT', os.getenv('API_PORT', 8000)))
     
     # Run HTTP server in main thread
     try:

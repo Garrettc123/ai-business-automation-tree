@@ -166,12 +166,14 @@ CREATE TRIGGER update_tasks_updated_at BEFORE UPDATE ON tasks
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Insert default system user (password should be changed)
+-- Insert default system user (IMPORTANT: Change password immediately after first login)
+-- Default password: changeme
+-- To generate a new password hash, use: python -c "import bcrypt; print(bcrypt.hashpw(b'your_password', bcrypt.gensalt()).decode())"
 INSERT INTO users (email, username, password_hash, full_name, role)
 VALUES (
     'admin@ai-automation.local',
     'admin',
-    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYKUYvKZP0m',  -- password: changeme
+    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYKUYvKZP0m',  -- password: changeme - CHANGE THIS!
     'System Administrator',
     'admin'
 ) ON CONFLICT (email) DO NOTHING;

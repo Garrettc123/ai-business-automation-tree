@@ -339,6 +339,182 @@ The system includes self-learning capabilities:
 - **Solution**: Operations branch with demand forecasting
 - **Results**: 18% inventory cost reduction, 99.2% supply chain visibility
 
+## 🚀 Deployment
+
+### Quick Deployment Options
+
+#### Option 1: Docker Compose (Recommended)
+
+The fastest way to deploy the full system with all dependencies:
+
+```bash
+# Clone the repository
+git clone https://github.com/Garrettc123/ai-business-automation-tree.git
+cd ai-business-automation-tree
+
+# Copy and configure environment variables
+cp .env.example .env
+# Edit .env and update API keys, passwords, etc.
+
+# Run the setup script (installs Docker if needed)
+chmod +x setup.sh
+./setup.sh
+
+# Services will be available at:
+# - Application API: http://localhost:8000
+# - Health Check: http://localhost:8000/health
+# - Grafana: http://localhost:3000 (admin/changeme)
+# - Prometheus: http://localhost:9090
+```
+
+#### Option 2: Vercel Deployment
+
+Deploy the API to Vercel for serverless hosting:
+
+```bash
+# Install Vercel CLI
+npm install -g vercel
+
+# Deploy
+vercel --prod
+
+# Or use environment variables
+vercel --prod \
+  --env OPENAI_API_KEY=your-key \
+  --env DB_HOST=your-db-host
+```
+
+**Note**: Vercel deployment is suitable for the API layer. For the full stack (with databases and monitoring), use Docker Compose or cloud deployment.
+
+#### Option 3: Cloud Deployment (AWS, GCP, Azure)
+
+Deploy to a remote server:
+
+```bash
+# Make the deployment script executable
+chmod +x deploy-to-cloud.sh
+
+# Run the deployment script
+./deploy-to-cloud.sh
+
+# Follow the prompts to enter:
+# - Server IP/hostname
+# - SSH credentials
+# - Port (default: 22)
+```
+
+### Environment Configuration
+
+Create a `.env` file from the template and configure the following required variables:
+
+```bash
+# Required for AI functionality
+OPENAI_API_KEY=sk-your-openai-api-key
+
+# Database configuration
+DB_PASSWORD=your-strong-password
+REDIS_PASSWORD=your-redis-password
+MONGO_PASSWORD=your-mongo-password
+
+# Security
+SECRET_KEY=your-secret-key-here
+JWT_SECRET_KEY=your-jwt-secret-key
+
+# Monitoring (optional)
+GRAFANA_PASSWORD=your-grafana-password
+```
+
+### Health Checks and Monitoring
+
+The system exposes several endpoints for monitoring:
+
+- `GET /health` - Basic health check
+- `GET /api/status` - Detailed system status
+- `GET /api/branches` - Branch status information
+- `GET /metrics` - Prometheus metrics (when configured)
+
+Example health check response:
+```json
+{
+  "status": "ok",
+  "message": "AI Business Automation Tree is running",
+  "system": {
+    "status": "healthy",
+    "uptime_seconds": 3600,
+    "uptime_human": "1h 0m",
+    "branches_count": 6,
+    "branches": {
+      "marketing": "active",
+      "sales": "active",
+      "operations": "active",
+      "customer_service": "active",
+      "analytics": "active",
+      "hr": "active"
+    },
+    "version": "1.0.0"
+  }
+}
+```
+
+### Container Management
+
+Useful Docker commands for managing your deployment:
+
+```bash
+# View all service logs
+docker compose logs -f
+
+# View specific service logs
+docker compose logs -f app
+
+# Restart a specific service
+docker compose restart app
+
+# Scale a service
+docker compose up -d --scale celery-worker=3
+
+# Stop all services
+docker compose stop
+
+# Stop and remove all containers
+docker compose down
+
+# Stop and remove with volumes (cleans all data)
+docker compose down -v
+```
+
+### Production Considerations
+
+1. **SSL/TLS**: Configure SSL certificates in nginx.conf for HTTPS
+2. **Secrets Management**: Use a secrets manager (AWS Secrets Manager, HashiCorp Vault)
+3. **Backups**: Enable automated database backups (configured in .env)
+4. **Scaling**: Use container orchestration (Kubernetes, ECS) for production scale
+5. **Monitoring**: Connect Prometheus to your alerting system (PagerDuty, Opsgenie)
+6. **Logging**: Configure centralized logging (ELK stack, CloudWatch, Datadog)
+
+### Deployment Architecture
+
+```
+┌─────────────────────────────────────────────┐
+│           Nginx Reverse Proxy               │
+│         (Port 80/443 - HTTP/HTTPS)         │
+└─────────────────┬───────────────────────────┘
+                  │
+    ┌─────────────┼─────────────┬─────────────┐
+    ▼             ▼             ▼             ▼
+┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐
+│   App   │  │ Grafana │  │Prometheus│  │  API    │
+│  :8000  │  │  :3000  │  │  :9090   │  │         │
+└────┬────┘  └─────────┘  └─────────┘  └─────────┘
+     │
+     ├──────────┬──────────┬──────────┐
+     ▼          ▼          ▼          ▼
+┌──────────┐┌────────┐┌────────┐┌──────────┐
+│PostgreSQL││ Redis  ││MongoDB ││  Celery  │
+│  :5432   ││ :6379  ││ :27017 ││  Worker  │
+└──────────┘└────────┘└────────┘└──────────┘
+```
+
 ## 👥 Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.

@@ -35,12 +35,11 @@ check_status $? "main.py syntax is valid"
 
 # Check 2: Docker Compose configuration
 echo "Validating docker-compose.yml..."
-if docker compose config --quiet 2>&1 | grep -q "error"; then
-    RESULT=1
+if docker compose config --quiet 2>&1; then
+    check_status 0 "docker-compose.yml is valid"
 else
-    RESULT=0
+    check_status 1 "docker-compose.yml is valid"
 fi
-check_status $RESULT "docker-compose.yml is valid"
 
 # Check 3: Nginx configuration syntax (basic check)
 echo "Validating nginx.conf..."

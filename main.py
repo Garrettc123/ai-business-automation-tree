@@ -191,10 +191,10 @@ async def initialize_system():
     return orchestrator
 
 
-async def main():
+def main():
     """Main entry point"""
-    # Initialize system
-    await initialize_system()
+    # Initialize system in async context
+    orchestrator_future = asyncio.run(initialize_system())
     
     # Get port from environment (PORT for Vercel, API_PORT for Docker)
     port = int(os.getenv('PORT', os.getenv('API_PORT', 8000)))
@@ -210,4 +210,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

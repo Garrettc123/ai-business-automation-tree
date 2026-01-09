@@ -178,3 +178,21 @@ docker-compose.override.yml
 .aws/
 .azure/
 .gcp/
+
+# SSL Certificates
+certs/
+*.crt
+*.cert
+
+# Backups
+backups/
+*.backup
+*.bak
+
+# Vercel
+.vercel
+
+# Node modules (if any)
+node_modules/
+package-lock.json
+yarn.lock

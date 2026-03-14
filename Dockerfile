@@ -64,4 +64,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 EXPOSE 8000
 
 # Default command
-CMD ["python", "trunk.py"]
+CMD ["python", "main.py"]

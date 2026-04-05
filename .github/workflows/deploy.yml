@@ -3,8 +3,9 @@ name: Deploy to Railway
 on:
   push:
     branches: [main]
-  tags:
-    - 'v*.*.*'
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -27,35 +28,36 @@ jobs:
       - name: Smoke-test imports
         run: python -c "from tree import RootNode, BranchNode, LeafNode, WorkflowState; print('Core imports OK')"
 
+      - name: Check secrets
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then echo "⚠️ RAILWAY_TOKEN not configured — skipping deploy"; exit 0; fi
+
       - name: Install Railway CLI
-        run: npm install -g @railway/cli
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then echo "Skipping — no RAILWAY_TOKEN"; exit 0; fi
+          npm install -g @railway/cli
 
       - name: Deploy to Railway
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --service ai-automation-tree --detach
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then echo "Skipping — no RAILWAY_TOKEN"; exit 0; fi
+          railway up --service ai-automation-tree --detach
         continue-on-error: true
 
       - name: Notify Slack on success
-        if: success() && secrets.SLACK_WEBHOOK_URL != ''
-        uses: slackapi/slack-github-action@v1.27.0
-        with:
-          payload: |
-            {
-              "text": "✅ AI Business Automation Tree deployed to Railway",
-              "blocks": [
-                {
-                  "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*✅ Deployment Successful*\n*Repo:* ai-business-automation-tree\n*Commit:* <https://github.com/Garrettc123/ai-business-automation-tree/commit/${{ github.sha }}|${{ github.sha }}>"
-                  }
-                }
-              ]
-            }
+        if: success()
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then echo "⚠️ SLACK_WEBHOOK_URL not configured — skipping notification"; exit 0; fi
+          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-Type: application/json' \
+            -d '{"text":"Deployment Successful — ai-business-automation-tree commit ${{ github.sha }}"}'
 
   release:
     runs-on: ubuntu-latest

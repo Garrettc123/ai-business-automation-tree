@@ -432,6 +432,78 @@ The system exposes several endpoints for monitoring:
 - `GET /api/status` - Detailed system status
 - `GET /api/branches` - Branch status information
 - `GET /metrics` - Prometheus metrics (when configured)
+- `GET /api/conical/stages` - Unified revenue funnel stages
+- `GET /api/conical/metrics` - Funnel KPI rollups (CAC, churn, LTV, payback, MRR/ARR)
+- `POST /api/conical/trigger` - Trigger the unified conical revenue workflow
+
+### Conical Revenue System
+
+The conical revenue system normalizes all monetization paths into one workflow:
+
+1. Acquisition
+2. Qualification
+3. Conversion
+4. Fulfillment
+5. Retention/Expansion
+
+Supported revenue paths:
+- services
+- subscriptions
+- one_time_sales
+- upsells
+- partnerships
+- affiliates
+- referrals
+
+Inbound sources are routed through Zapier-normalized events (ads, forms, email, social, webhooks, partner leads, support signals) and then propagated to HubSpot, Stripe, Linear, GitHub, and Notion payloads in a single trigger contract.
+
+Example trigger:
+
+```bash
+curl -X POST http://localhost:8000/api/conical/trigger \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phase": "phase_1_core_offer",
+    "funnel": {
+      "revenue_path": "subscriptions",
+      "inbound_source": "forms"
+    },
+    "customer": {
+      "lead_id": "LEAD-1001",
+      "account_id": "ACME-01",
+      "email": "buyer@acme.com",
+      "first_name": "Alex",
+      "last_name": "Rivera",
+      "company": "Acme Corp",
+      "lifecycle_stage": "lead"
+    },
+    "commerce": {
+      "offer_name": "Growth Plan",
+      "product_line": "automation",
+      "amount": 2999,
+      "currency": "usd",
+      "mrr": 2999,
+      "stripe_price_id": "price_123"
+    },
+    "analytics": {
+      "cac": 900,
+      "churn_rate": 0.04,
+      "ltv": 36000,
+      "gross_margin": 0.72,
+      "conversion_rate": 0.18,
+      "net_revenue_growth": 0.12
+    },
+    "governance": {
+      "approved": true,
+      "approval_reference": "REVOPS-2026-07-001"
+    }
+  }'
+```
+
+Governance controls:
+- High-risk approval gate (default threshold: `CONICAL_HIGH_RISK_AMOUNT=50000`)
+- Rollback metadata attached to every conical trigger
+- Weekly optimization review cadence marker in workflow governance data
 
 Example health check response:
 ```json

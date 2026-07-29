@@ -23,11 +23,10 @@ import json
 import logging
 import os
 import threading
-from collections import defaultdict
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, Dict, List, Optional
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import urlparse
 
 # Configure logging
 logging.basicConfig(
@@ -49,6 +48,7 @@ from agents import (
     build_stripe_branch,
     build_zapier_branch,
 )
+from revenue_funnel import FUNNEL_STAGES, build_conical_trigger
 
 
 def build_tree() -> RootNode:
@@ -73,6 +73,8 @@ _workflows: Dict[str, WorkflowState] = {}          # workflow_id → state (capp
 _MAX_WORKFLOWS = 1000
 _events_today: int = 0                              # counter, reset at midnight
 _events_today_date: str = ""                        # YYYY-MM-DD of last reset
+_conical_runs: List[Dict[str, Any]] = []            # capped run history for KPI rollups
+_MAX_CONICAL_RUNS = 1000
 _lock = threading.Lock()
 
 
@@ -94,6 +96,75 @@ def _increment_events() -> None:
             _events_today = 0
             _events_today_date = today
         _events_today += 1
+
+
+def _record_conical_run(normalized_event: Dict[str, Any], workflow_id: str) -> None:
+    kpis = normalized_event.get("kpis", {})
+    funnel_model = normalized_event.get("funnel_model", {})
+    row = {
+        "workflow_id": workflow_id,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "revenue_path": funnel_model.get("revenue_path"),
+        "inbound_source": funnel_model.get("inbound_source"),
+        "phase": funnel_model.get("phase"),
+        "kpis": kpis,
+    }
+    with _lock:
+        _conical_runs.append(row)
+        if len(_conical_runs) > _MAX_CONICAL_RUNS:
+            del _conical_runs[0 : len(_conical_runs) - _MAX_CONICAL_RUNS]
+
+
+def _average(values: List[float]) -> float:
+    return round(sum(values) / len(values), 4) if values else 0.0
+
+
+def _sum(values: List[float]) -> float:
+    return round(sum(values), 4) if values else 0.0
+
+
+def _conical_metrics_summary() -> Dict[str, Any]:
+    with _lock:
+        runs = list(_conical_runs)
+    if not runs:
+        return {
+            "runs": 0,
+            "stages": FUNNEL_STAGES,
+            "averages": {},
+            "totals": {},
+            "by_revenue_path": {},
+            "by_source": {},
+        }
+
+    def _kpi(name: str, row: Dict[str, Any]) -> float:
+        try:
+            return float(row.get("kpis", {}).get(name, 0.0))
+        except (TypeError, ValueError):
+            return 0.0
+
+    avg_keys = ["cac", "payback_months", "churn_rate", "ltv", "gross_margin", "conversion_rate", "net_revenue_growth"]
+    total_keys = ["mrr", "arr", "booked_revenue"]
+
+    averages = {key: _average([_kpi(key, r) for r in runs]) for key in avg_keys}
+    totals = {key: _sum([_kpi(key, r) for r in runs]) for key in total_keys}
+
+    by_revenue_path: Dict[str, int] = {}
+    by_source: Dict[str, int] = {}
+    for r in runs:
+        rp = str(r.get("revenue_path") or "unknown")
+        src = str(r.get("inbound_source") or "unknown")
+        by_revenue_path[rp] = by_revenue_path.get(rp, 0) + 1
+        by_source[src] = by_source.get(src, 0) + 1
+
+    return {
+        "runs": len(runs),
+        "stages": FUNNEL_STAGES,
+        "averages": averages,
+        "totals": totals,
+        "by_revenue_path": by_revenue_path,
+        "by_source": by_source,
+        "recent": runs[-20:],
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -387,6 +458,12 @@ class AutomationHandler(BaseHTTPRequestHandler):
             result = [w.to_dict() for w in list(_workflows.values())[-100:]]
             self._send_json(200, result)
 
+        elif path == "/api/conical/stages":
+            self._send_json(200, {"funnel_stages": FUNNEL_STAGES})
+
+        elif path == "/api/conical/metrics":
+            self._send_json(200, _conical_metrics_summary())
+
         elif path.startswith("/api/workflows/"):
             wid = path.split("/api/workflows/")[-1]
             state = _workflows.get(wid)
@@ -408,8 +485,11 @@ class AutomationHandler(BaseHTTPRequestHandler):
                     "GET  /api/tree",
                     "GET  /api/workflows",
                     "GET  /api/workflows/<id>",
+                    "GET  /api/conical/stages",
+                    "GET  /api/conical/metrics",
                     "POST /webhook",
                     "POST /api/trigger",
+                    "POST /api/conical/trigger",
                     "GET  /dashboard",
                 ],
             })
@@ -431,6 +511,26 @@ class AutomationHandler(BaseHTTPRequestHandler):
                 "status": "accepted",
                 "workflow_id": workflow_id,
                 "message": "Tree walk started asynchronously",
+            })
+        elif path == "/api/conical/trigger":
+            build = build_conical_trigger(payload)
+            if build.status != "ok":
+                self._send_json(403, {
+                    "status": "blocked",
+                    "reason": build.blocked_reason,
+                    "required": ["governance.approved=true", "governance.approval_reference"],
+                })
+                return
+
+            workflow_id = _run_tree_walk(build.trigger_event)
+            _record_conical_run(build.trigger_event, workflow_id)
+            logger.info("Conical workflow triggered: workflow_id=%s", workflow_id)
+            self._send_json(202, {
+                "status": "accepted",
+                "workflow_id": workflow_id,
+                "message": "Conical revenue funnel workflow started asynchronously",
+                "funnel_stages": FUNNEL_STAGES,
+                "governance": build.trigger_event.get("governance", {}),
             })
         else:
             self._send_json(404, {"error": "Not Found", "path": path})

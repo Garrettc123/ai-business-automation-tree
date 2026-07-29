@@ -14,9 +14,10 @@ permissions:
 jobs:
   auto-approve-merge:
     runs-on: ubuntu-latest
-    if: github.event.pull_request || github.event.workflow_run.conclusion == 'success'
+    if: github.event_name == 'pull_request'
     steps:
       - name: Approve PR
+        if: github.event.pull_request.user.login != 'github-actions[bot]'
         uses: hmarr/auto-approve-action@v3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}

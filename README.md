@@ -455,7 +455,7 @@ Supported revenue paths:
 - affiliates
 - referrals
 
-Inbound sources are routed through Zapier-normalized events (ads, forms, email, social, webhooks, partner leads, support signals) and then propagated to HubSpot, Stripe, Linear, GitHub, and Notion payloads in a single trigger contract.
+Inbound sources are routed through Zapier-normalized events (`ads`, `forms`, `email`, `social`, `webhooks`, `partner_leads`, `support_signals`, `direct`) and then propagated to HubSpot, Stripe, Linear, GitHub, and Notion payloads in a single trigger contract.
 
 Example trigger:
 

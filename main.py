@@ -459,7 +459,7 @@ class AutomationHandler(BaseHTTPRequestHandler):
             self._send_json(200, result)
 
         elif path == "/api/conical/stages":
-            self._send_json(200, {"funnel_stages": FUNNEL_STAGES})
+            self._send_json(200, {"stages": FUNNEL_STAGES})
 
         elif path == "/api/conical/metrics":
             self._send_json(200, _conical_metrics_summary())

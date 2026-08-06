@@ -70,7 +70,6 @@ def build_conical_trigger(payload: Dict[str, Any]) -> BuildResult:
     funnel = payload.get("funnel", {})
     customer = payload.get("customer", {})
     commerce = payload.get("commerce", {})
-    delivery = payload.get("delivery", {})
     retention = payload.get("retention", {})
     analytics = payload.get("analytics", {})
     governance = payload.get("governance", {})
@@ -87,7 +86,8 @@ def build_conical_trigger(payload: Dict[str, Any]) -> BuildResult:
     amount_cents = max(_to_int(round(amount * 100)), 0)
     currency = str(commerce.get("currency", "usd")).lower()
 
-    approved = bool(governance.get("approved", False))
+    approved_raw = governance.get("approved", False)
+    approved = approved_raw is True or str(approved_raw).lower() == "true"
     approval_reference = str(governance.get("approval_reference", "")).strip()
     high_risk_threshold = _to_float(os.getenv("CONICAL_HIGH_RISK_AMOUNT", "50000"), 50000)
     is_high_risk = amount >= high_risk_threshold

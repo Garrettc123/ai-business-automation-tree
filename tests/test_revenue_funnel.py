@@ -1,6 +1,6 @@
 import uuid
 
-from revenue_funnel import FUNNEL_STAGES, build_conical_trigger
+from revenue_funnel import FUNNEL_STAGES, INBOUND_SOURCES, REVENUE_PATHS, build_conical_trigger
 
 
 def _base_payload():
@@ -84,6 +84,92 @@ def test_build_conical_trigger_allows_high_risk_with_approval(monkeypatch):
     assert result.trigger_event["governance"]["high_risk"] is True
 
 
+# ---------------------------------------------------------------------------
+# Normalization fallbacks
+# ---------------------------------------------------------------------------
+
+
+def test_unknown_revenue_path_defaults_to_services():
+    payload = _base_payload()
+    payload["funnel"]["revenue_path"] = "nonexistent_path"
+    result = build_conical_trigger(payload)
+    assert result.status == "ok"
+    assert result.trigger_event["funnel_model"]["revenue_path"] == "services"
+    assert result.trigger_event["funnel_model"]["revenue_path"] in REVENUE_PATHS
+
+
+def test_unknown_inbound_source_defaults_to_webhooks():
+    payload = _base_payload()
+    payload["funnel"]["inbound_source"] = "carrier_pigeon"
+    result = build_conical_trigger(payload)
+    assert result.status == "ok"
+    assert result.trigger_event["funnel_model"]["inbound_source"] == "webhooks"
+    assert result.trigger_event["funnel_model"]["inbound_source"] in INBOUND_SOURCES
+
+
+def test_missing_funnel_and_commerce_fields_use_defaults():
+    result = build_conical_trigger({})
+    assert result.status == "ok"
+    fm = result.trigger_event["funnel_model"]
+    assert fm["revenue_path"] in REVENUE_PATHS
+    assert fm["inbound_source"] in INBOUND_SOURCES
+
+
+def test_amount_defaults_to_zero_when_missing():
+    payload = _base_payload()
+    del payload["commerce"]["amount"]
+    result = build_conical_trigger(payload)
+    assert result.status == "ok"
+    assert result.trigger_event["kpis"]["booked_revenue"] == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Governance edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_high_risk_blocked_when_approval_reference_missing(monkeypatch):
+    monkeypatch.setenv("CONICAL_HIGH_RISK_AMOUNT", "1000")
+    payload = _base_payload()
+    payload["commerce"]["amount"] = 5000
+    payload["governance"] = {"approved": True, "approval_reference": ""}
+    result = build_conical_trigger(payload)
+    assert result.status == "blocked"
+
+
+def test_string_false_is_not_approved(monkeypatch):
+    """The string 'false' must not be treated as an approved flag."""
+    monkeypatch.setenv("CONICAL_HIGH_RISK_AMOUNT", "1000")
+    payload = _base_payload()
+    payload["commerce"]["amount"] = 5000
+    payload["governance"] = {"approved": "false", "approval_reference": "REVOPS-1"}
+    result = build_conical_trigger(payload)
+    assert result.status == "blocked"
+
+
+def test_string_true_is_approved(monkeypatch):
+    """The string 'true' should be treated as an approved flag."""
+    monkeypatch.setenv("CONICAL_HIGH_RISK_AMOUNT", "1000")
+    payload = _base_payload()
+    payload["commerce"]["amount"] = 5000
+    payload["governance"] = {"approved": "true", "approval_reference": "REVOPS-1"}
+    result = build_conical_trigger(payload)
+    assert result.status == "ok"
+
+
+def test_low_risk_transaction_allowed_without_governance():
+    payload = _base_payload()
+    payload["commerce"]["amount"] = 100
+    payload["governance"] = {}
+    result = build_conical_trigger(payload)
+    assert result.status == "ok"
+
+
+# ---------------------------------------------------------------------------
+# Metrics rollup
+# ---------------------------------------------------------------------------
+
+
 def test_main_conical_metrics_rollup(monkeypatch):
     import main
 
@@ -103,3 +189,46 @@ def test_main_conical_metrics_rollup(monkeypatch):
     assert summary["totals"]["booked_revenue"] == 3000.0
     assert summary["totals"]["mrr"] == 3000.0
     assert summary["averages"]["cac"] == 400.0
+
+
+def test_main_conical_metrics_empty_history(monkeypatch):
+    import main
+
+    monkeypatch.setattr(main, "_conical_runs", [])
+    summary = main._conical_metrics_summary()
+    assert summary["runs"] == 0
+    assert summary["averages"] == {}
+    assert summary["totals"] == {}
+    assert summary["by_revenue_path"] == {}
+    assert summary["by_source"] == {}
+    assert summary["stages"] == FUNNEL_STAGES
+
+
+def test_main_conical_metrics_by_revenue_path_and_source(monkeypatch):
+    import main
+
+    monkeypatch.setattr(main, "_conical_runs", [])
+
+    p1 = _base_payload()
+    p1["funnel"]["revenue_path"] = "subscriptions"
+    p1["funnel"]["inbound_source"] = "ads"
+    e1 = build_conical_trigger(p1).trigger_event
+
+    p2 = _base_payload()
+    p2["funnel"]["revenue_path"] = "subscriptions"
+    p2["funnel"]["inbound_source"] = "forms"
+    e2 = build_conical_trigger(p2).trigger_event
+
+    p3 = _base_payload()
+    p3["funnel"]["revenue_path"] = "services"
+    p3["funnel"]["inbound_source"] = "ads"
+    e3 = build_conical_trigger(p3).trigger_event
+
+    for e in (e1, e2, e3):
+        main._record_conical_run(e, str(uuid.uuid4()))
+
+    summary = main._conical_metrics_summary()
+    assert summary["by_revenue_path"]["subscriptions"] == 2
+    assert summary["by_revenue_path"]["services"] == 1
+    assert summary["by_source"]["ads"] == 2
+    assert summary["by_source"]["forms"] == 1
